@@ -1,0 +1,20 @@
+name = "tempcloud-api"
+main = "src/index.ts"
+compatibility_date = "2024-12-05"
+
+[[r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "tempcloud-files"
+
+# KV Namespace
+[[kv_namespaces]]
+binding = "FILE_KV"
+id = "b4bd8c5b67a646649109550b7e7c94d1"
+preview_id = "536a8fa2e47c442680d606b26ff32500"
+
+[vars]
+BASE_URL = "https://tempcloud-api.artemka131008-9.workers.dev"
+PRESIGNED_URL_TTL = "300"
+DEFAULT_FILE_TTL = "3600"
+MAX_FILE_SIZE = "104857600"
+CORS_ORIGIN = "*"
