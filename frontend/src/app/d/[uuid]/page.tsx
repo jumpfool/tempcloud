@@ -101,7 +101,7 @@ export default function DownloadPage({
     const url = URL.createObjectURL(finalBlob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = result.filename;
+    a.download = result.filename || info?.filename || "download";
     document.body.appendChild(a);
     a.click();
     a.remove();

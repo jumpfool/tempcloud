@@ -120,8 +120,13 @@ export async function downloadFile(
   }
   const blob = await res.blob();
   const disposition = res.headers.get("Content-Disposition") || "";
-  const match = disposition.match(/filename="?(.+?)"?$/);
-  const filename = match ? decodeURIComponent(match[1]) : "download";
+  let filename = "download";
+  
+  const filenameMatch = disposition.match(/filename\*?=["']?(?:UTF-\d['"])?([^;\r\n"']+)["']?/i);
+  if (filenameMatch && filenameMatch[1]) {
+    filename = decodeURIComponent(filenameMatch[1].trim());
+  }
+  
   return { ok: true, blob, filename };
 }
 
