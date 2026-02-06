@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { initUpload, uploadFile, finalizeUpload, formatBytes } from "@/lib/api";
+import { generateEncryptionKey, exportKeyToString, encryptFile } from "@/lib/crypto";
 
 type UploadState = "idle" | "uploading" | "finalizing" | "done" | "error";
 
@@ -80,20 +81,24 @@ export default function Home() {
     setError("");
 
     try {
+      const encKey = await generateEncryptionKey();
+      const encryptedBlob = await encryptFile(file, encKey);
+      const keyString = await exportKeyToString(encKey);
+
       const initRes = await initUpload({
         filename: file.name,
-        size: file.size,
-        mime: file.type || "application/octet-stream",
+        size: encryptedBlob.size,
+        mime: "application/octet-stream",
         expires_in: parseInt(expiresIn),
         max_downloads: maxDownloads ? parseInt(maxDownloads) : undefined,
         password: usePassword && password ? password : undefined,
       });
 
-      await uploadFile(initRes.upload_url, file, setProgress);
+      await uploadFile(initRes.upload_url, encryptedBlob, setProgress);
 
       setState("finalizing");
       const finalRes = await finalizeUpload(initRes.file_uuid);
-      setDownloadLink(`${window.location.origin}/d/${initRes.file_uuid}`);
+      setDownloadLink(`${window.location.origin}/d/${initRes.file_uuid}#${keyString}`);
       setState("done");
     } catch (err) {
       setState("error");
@@ -181,6 +186,7 @@ export default function Home() {
               formatBytes(file?.size || 0),
               `expires in ${EXPIRY_OPTIONS.find((o) => o.value === expiresIn)?.label}`,
               maxDownloads ? `${maxDownloads} download${parseInt(maxDownloads) !== 1 ? "s" : ""}` : null,
+              "end-to-end encrypted",
               usePassword && password ? "password protected" : null,
             ]
               .filter(Boolean)
@@ -215,7 +221,7 @@ export default function Home() {
           <div>
             <h1 className="text-lg font-medium">Upload a file</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Files are encrypted at rest and expire automatically.
+              End-to-end encrypted. The key never leaves your browser.
             </p>
           </div>
 

@@ -13,8 +13,9 @@ import {
   formatTimeLeft,
   type FileInfoResponse,
 } from "@/lib/api";
+import { importKeyFromString, decryptBlob } from "@/lib/crypto";
 
-type PageState = "loading" | "ready" | "password" | "downloading" | "expired" | "error";
+type PageState = "loading" | "ready" | "password" | "downloading" | "decrypting" | "expired" | "error";
 
 const fade = {
   initial: { opacity: 0, y: 8 },
@@ -34,6 +35,12 @@ export default function DownloadPage({
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [encKeyString, setEncKeyString] = useState<string | null>(null);
+
+  useEffect(() => {
+    const hash = window.location.hash.slice(1);
+    if (hash) setEncKeyString(hash);
+  }, []);
 
   useEffect(() => {
     getFileInfo(uuid)
@@ -76,7 +83,22 @@ export default function DownloadPage({
       }
       return;
     }
-    const url = URL.createObjectURL(result.blob);
+
+    let finalBlob = result.blob;
+
+    if (encKeyString) {
+      try {
+        setState("decrypting");
+        const key = await importKeyFromString(encKeyString);
+        finalBlob = await decryptBlob(result.blob, key);
+      } catch {
+        setError("Decryption failed — invalid or missing key");
+        setState("error");
+        return;
+      }
+    }
+
+    const url = URL.createObjectURL(finalBlob);
     const a = document.createElement("a");
     a.href = url;
     a.download = result.filename;
@@ -135,7 +157,7 @@ export default function DownloadPage({
         </motion.div>
       )}
 
-      {(state === "ready" || state === "password" || state === "downloading") && (
+      {(state === "ready" || state === "password" || state === "downloading" || state === "decrypting") && (
         <motion.div
           key="ready"
           className="space-y-6"
@@ -147,7 +169,9 @@ export default function DownloadPage({
           <div>
             <h1 className="text-lg font-medium">Download file</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Review the file details before downloading.
+              {encKeyString
+                ? "This file is end-to-end encrypted. Decryption happens in your browser."
+                : "Review the file details before downloading."}
             </p>
           </div>
 
@@ -229,11 +253,11 @@ export default function DownloadPage({
 
           <Button
             onClick={handleDownload}
-            disabled={(state === "password" && !password) || state === "downloading"}
+            disabled={(state === "password" && !password) || state === "downloading" || state === "decrypting"}
             className="w-full"
           >
             <AnimatePresence mode="wait">
-              {state === "downloading" ? (
+              {(state === "downloading" || state === "decrypting") ? (
                 <motion.span
                   key="downloading"
                   className="flex items-center gap-2"
@@ -243,7 +267,7 @@ export default function DownloadPage({
                   transition={{ duration: 0.075 }}
                 >
                   <Spinner />
-                  Downloading...
+                  {state === "decrypting" ? "Decrypting..." : "Downloading..."}
                 </motion.span>
               ) : (
                 <motion.span
