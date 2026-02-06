@@ -1,7 +1,6 @@
 # tempcloud
 
 Temporary file-sharing app with password protection and link expiration
-
 **Backend:** Cloudflare Workers (Hono) + R2 (file storage) + KV (metadata)
 **Frontend:** Next.js
 
